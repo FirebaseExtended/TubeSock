@@ -1,19 +1,3 @@
-/*
- *  Copyright (C) 2012 Roderick Baier
- *  
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  
- *  	http://www.apache.org/licenses/LICENSE-2.0
- *  
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License. 
- */
-
 package com.firebase.tubesock;
 
 import org.apache.commons.codec.binary.Base64;
@@ -26,6 +10,8 @@ import java.util.Map;
 
 
 public class WebSocketHandshake {
+    private static final String WEBSOCKET_VERSION = "13";
+
     private URI url = null;
     private String protocol = null;
     private String nonce = null;
@@ -53,7 +39,7 @@ public class WebSocketHandshake {
         header.put("Host", host);
         header.put("Upgrade", "websocket");
         header.put("Connection", "Upgrade");
-        header.put("Sec-WebSocket-Version", String.valueOf(WebSocket.getVersion()));
+        header.put("Sec-WebSocket-Version", WEBSOCKET_VERSION);
         header.put("Sec-WebSocket-Key", this.nonce);
 
         if (this.protocol != null) {

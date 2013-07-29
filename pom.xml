@@ -5,6 +5,29 @@
   <version>0.0.1</version>
   <modelVersion>4.0.0</modelVersion>
   <packaging>jar</packaging>
+  <name>TubeSock</name>
+  <description>A WebSocket client implemented in Java</description>
+  <url>https://github.com/firebase/TubeSock</url>
+  <licenses>
+    <license>
+      <name>MIT</name>
+      <url>http://firebase.mit-license.org</url>
+    </license>
+  </licenses>
+  <scm>
+    <connection>scm:git:git@github.com:firebase/TubeSock.git</connection>
+    <developerConnection>scm:git:git@github.com:firebase/TubeSock.git</developerConnection>
+    <url>https://github.com/firebase/TubeSock</url>
+  </scm>
+  <developers>
+    <developer>
+      <id>gsoltis</id>
+      <name>Greg Soltis</name>
+      <email>greg@firebase.com</email>
+      <organization>Firebase</organization>
+      <url>https://twitter.com/gsoltis</url>
+    </developer>
+  </developers>
   <dependencies>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
@@ -14,7 +37,12 @@
   </dependencies>
   <build>
     <plugins>
-      <plugin>
+      <!--
+        Used to generate a jar with all dependencies included + shaded. Used to build something for devs who aren't
+        using maven and just want something they can put in their libs directory. The shading avoids clashes with
+        other versions of the same libraries being present
+      -->
+      <!--plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>2.1</version>
@@ -37,6 +65,43 @@
                 </relocation>
               </relocations>
             </configuration>
+          </execution>
+        </executions>
+      </plugin-->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

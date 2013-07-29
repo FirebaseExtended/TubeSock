@@ -18,9 +18,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-
+/**
+ * This is the main class used to create a websocket connection. Create a new instance, set an event handler, and then
+ * call connect(). Once the event handler's onOpen method has been called, call send() on the websocket to transmit
+ * data.
+ */
 public class WebSocket extends Thread {
-    private static final int VERSION = 13;
     private static final String THREAD_BASE_NAME = "TubeSock";
 
     static final byte OPCODE_NONE = 0x0;
@@ -39,14 +42,31 @@ public class WebSocket extends Thread {
     private WebSocketWriter writer = null;
     private WebSocketHandshake handshake = null;
 
+    /**
+     * Create a websocket to connect to a given server
+     * @param url The URL of a websocket server
+     */
     public WebSocket(URI url) {
         this(url, null);
     }
 
+    /**
+     * Create a websocket to connect to a given server. Include protocol in websocket handshake
+     * @param url The URL of a websocket server
+     * @param protocol The protocol to include in the handshake. If null, it will be omitted
+     */
     public WebSocket(URI url, String protocol) {
         this(url, protocol, null);
     }
 
+    /**
+     * Create a websocket to connect to a given server. Include the given protocol in the handshake, as well as any
+     * extra HTTP headers specified. Useful if you would like to include a User-Agent or other header
+     * @param url The URL of a websocket server
+     * @param protocol The protocol to include in the handshake. If null, it will be omitted
+     * @param extraHeaders Any extra HTTP headers to be included with the initial request. Pass null if not extra headers
+     *                     are requested
+     */
     public WebSocket(URI url, String protocol, Map<String, String> extraHeaders) {
         this.url = url;
         handshake = new WebSocketHandshake(url, protocol, extraHeaders);
@@ -252,10 +272,6 @@ public class WebSocket extends Thread {
         X509Certificate peerCert = (X509Certificate)certs[0];
         StrictHostnameVerifier verifier = new StrictHostnameVerifier();
         verifier.verify(host, peerCert);
-    }
-
-    public static int getVersion() {
-        return VERSION;
     }
 
     /**
