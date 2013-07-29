@@ -6,6 +6,29 @@ TubeSock is a Java implementation of the client side of the WebSocket Protocol f
 Building / Installing
 ---------------------
 
+### Maven
+
+Add the following to your pom.xml file:
+
+    <dependency>
+      <groupId>com.firebase</groupId>
+      <artifactId>tubesock</artifactId>
+      <version>0.0.1</version>
+    </dependency>
+
+### Building standalone
+
+If you want to build a standalone jar to include in an application, clone the application and then run:
+
+    mvn clean package -Dstandalone
+
+This will generate a jar that includes shaded versions of the dependencies to avoid clashing with any other dependencies
+your application might have.
+
+
+Dependencies
+------------
+
 If compiling from source, you must include
 [Apache Httpcomponents Client 4.2.5](https://hc.apache.org/httpcomponents-client-ga/download.html) as well.
 
