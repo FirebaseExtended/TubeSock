@@ -9,7 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 
-public class WebSocketHandshake {
+class WebSocketHandshake {
     private static final String WEBSOCKET_VERSION = "13";
 
     private URI url = null;

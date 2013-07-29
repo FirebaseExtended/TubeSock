@@ -3,8 +3,11 @@ package com.firebase.tubesock;
 import java.io.DataInputStream;
 import java.io.IOException;
 
-
-public class WebSocketReceiver {
+/**
+ * This class encapsulates the receiving and decoding of websocket frames. It is run from the thread started by the
+ * websocket class. It does some best-effort error detection for violations of the websocket spec.
+ */
+class WebSocketReceiver {
     private DataInputStream input = null;
     private WebSocket websocket = null;
     private WebSocketEventHandler eventHandler = null;
@@ -14,13 +17,13 @@ public class WebSocketReceiver {
     private volatile boolean stop = false;
 
 
-    public WebSocketReceiver(DataInputStream input, WebSocket websocket) {
+    WebSocketReceiver(DataInputStream input, WebSocket websocket) {
         this.input = input;
         this.websocket = websocket;
         this.eventHandler = websocket.getEventHandler();
     }
 
-    public void run() {
+    void run() {
         while (!stop) {
             try {
                 int offset = 0;
@@ -133,11 +136,11 @@ public class WebSocketReceiver {
         return length;
     }
 
-    public void stopit() {
+    void stopit() {
         stop = true;
     }
 
-    public boolean isRunning() {
+    boolean isRunning() {
         return !stop;
     }
 

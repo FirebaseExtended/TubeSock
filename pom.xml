@@ -8,6 +8,15 @@
   <name>TubeSock</name>
   <description>A WebSocket client implemented in Java</description>
   <url>https://github.com/firebase/TubeSock</url>
+  <organization>
+    <name>Firebase</name>
+    <url>https://www.firebase.com/</url>
+  </organization>
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
   <licenses>
     <license>
       <name>MIT</name>

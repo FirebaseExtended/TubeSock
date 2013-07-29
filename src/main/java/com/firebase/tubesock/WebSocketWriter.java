@@ -14,7 +14,12 @@ import java.util.concurrent.LinkedBlockingQueue;
  * Date: 7/24/13
  * Time: 10:42 AM
  */
-public class WebSocketWriter extends Thread {
+
+/**
+ * This class handles blocking write operations to the websocket. Given an opcode and some bytes, it frames a message
+ * and sends it over the wire. The actual sending happens in a separate thread.
+ */
+class WebSocketWriter extends Thread {
 
     private BlockingQueue<ByteBuffer> pendingBuffers;
     private final Random random = new Random();
@@ -23,7 +28,7 @@ public class WebSocketWriter extends Thread {
     private WebSocket websocket;
     private WritableByteChannel channel;
 
-    public WebSocketWriter(OutputStream output, WebSocket websocket, String threadBaseName) {
+    WebSocketWriter(OutputStream output, WebSocket websocket, String threadBaseName) {
         setName(threadBaseName + "Writer");
         this.websocket = websocket;
         channel = Channels.newChannel(output);
@@ -95,7 +100,7 @@ public class WebSocketWriter extends Thread {
         return mask;
     }
 
-    public synchronized void send(byte opcode, boolean masking, byte[] data) throws IOException {
+    synchronized void send(byte opcode, boolean masking, byte[] data) throws IOException {
         ByteBuffer frame = frameInBuffer(opcode, masking, data);
         if (stop && (closeSent || opcode != WebSocket.OPCODE_CLOSE)) {
             throw new WebSocketException("Shouldn't be sending");
@@ -125,16 +130,11 @@ public class WebSocketWriter extends Thread {
     }
 
     private void writeMessage() throws InterruptedException, IOException {
-        /*byte[] msg = pendingSends.take();
-        output.write(msg);*/
         ByteBuffer msg = pendingBuffers.take();
         channel.write(msg);
-        //byte[] buf = msg.array();
-        //output.write(buf);
-
     }
 
-    public void stopIt() {
+    void stopIt() {
         stop = true;
     }
 

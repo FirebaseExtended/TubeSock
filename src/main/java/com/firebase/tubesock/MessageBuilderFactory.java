@@ -11,7 +11,12 @@ import java.util.List;
  * Date: 7/25/13
  * Time: 12:19 PM
  */
-public class MessageBuilderFactory {
+
+/**
+ * Instances provide a builder for a full WebSocketMessage that could be split across multiple websocket frames.
+ * Depending on the opcode, the returned builders will buffer and assemble either bytes or a String.
+ */
+class MessageBuilderFactory {
 
     interface Builder {
         boolean appendBytes(byte[] bytes);
@@ -54,6 +59,9 @@ public class MessageBuilderFactory {
         }
 
         public boolean appendBytes(byte[] bytes) {
+            // Uncomment if you want slower but more precise decoding. Useful if you're splitting multi-byte utf8 chars
+            // across websocket frames
+            //String nextFrame = decodeStringStreaming(bytes);
             String nextFrame = decodeString(bytes);
             if (nextFrame != null) {
                 builder.append(nextFrame);
@@ -69,6 +77,11 @@ public class MessageBuilderFactory {
             return new WebSocketMessage(builder.toString());
         }
 
+        /**
+         * Quicker but less precise utf8 decoding. Does not handle characters split across websocket frames.
+         * @param bytes Bytes representing a utf8 string
+         * @return The decoded string
+         */
         private String decodeString(byte[] bytes) {
             try {
                 ByteBuffer input = ByteBuffer.wrap(bytes);
@@ -80,6 +93,13 @@ public class MessageBuilderFactory {
             }
         }
 
+        /**
+         * Left in for reference. Less efficient, but potentially catches more errors. Behavior is largely dependent on
+         * how strict the JVM's utf8 decoder is. It is possible on some JVMs to decode a string that then throws an
+         * error when attempting to return it to bytes.
+         * @param bytes Bytes representing a utf8 string
+         * @return The decoded string
+         */
         private String decodeStringStreaming(byte[] bytes) {
             try {
                 ByteBuffer input = getBuffer(bytes);
