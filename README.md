@@ -3,9 +3,11 @@ TubeSock - A Java WebSocket Client Library
 
 TubeSock is a Java implementation of the client side of the WebSocket Protocol for use in Java applications.
 
-Requirements
-------------
- * [Apache Httpcomponents Client 4.2.5](https://hc.apache.org/httpcomponents-client-ga/download.html)
+Building / Installing
+---------------------
+
+If compiling from source, you must include
+[Apache Httpcomponents Client 4.2.5](https://hc.apache.org/httpcomponents-client-ga/download.html) as well.
 
 Usage
 -----

@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <groupId>com.firebase</groupId>
   <artifactId>tubesock</artifactId>
-  <version>0.0.1</version>
+  <version>0.0.1-SNAPSHOT</version>
   <modelVersion>4.0.0</modelVersion>
   <packaging>jar</packaging>
   <name>TubeSock</name>
@@ -46,40 +46,10 @@
   </dependencies>
   <build>
     <plugins>
-      <!--
-        Used to generate a jar with all dependencies included + shaded. Used to build something for devs who aren't
-        using maven and just want something they can put in their libs directory. The shading avoids clashes with
-        other versions of the same libraries being present
-      -->
-      <!--plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>2.1</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-            <configuration>
-              <createDependencyReducedPom>false</createDependencyReducedPom>
-              <relocations>
-                <relocation>
-                  <pattern>org.apache.commons</pattern>
-                  <shadedPattern>org.firebase-shaded.apache.commons</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>org.apache.http</pattern>
-                  <shadedPattern>org.firebase-shaded.apache.http</shadedPattern>
-                </relocation>
-              </relocations>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin-->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -92,6 +62,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <version>2.9.1</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
@@ -104,6 +75,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.4</version>
         <executions>
           <execution>
             <id>sign-artifacts</id>
@@ -116,4 +88,49 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <!--
+        Used to generate a jar with all dependencies included + shaded. Used to build something for devs who aren't
+        using maven and just want something they can put in their libs directory. The shading avoids clashes with
+        other versions of the same libraries being present
+      -->
+      <id>standalone</id>
+      <activation>
+        <property>
+          <name>standalone</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-shade-plugin</artifactId>
+            <version>2.1</version>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>shade</goal>
+                </goals>
+                <configuration>
+                  <createDependencyReducedPom>false</createDependencyReducedPom>
+                  <relocations>
+                    <relocation>
+                      <pattern>org.apache.commons</pattern>
+                      <shadedPattern>org.firebase-shaded.apache.commons</shadedPattern>
+                    </relocation>
+                    <relocation>
+                      <pattern>org.apache.http</pattern>
+                      <shadedPattern>org.firebase-shaded.apache.http</shadedPattern>
+                    </relocation>
+                  </relocations>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

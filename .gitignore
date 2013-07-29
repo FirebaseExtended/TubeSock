@@ -7,3 +7,4 @@ gen/
 bin/
 local.properties
 target/
+release.properties
