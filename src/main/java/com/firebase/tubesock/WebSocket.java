@@ -126,6 +126,10 @@ public class WebSocket extends Thread {
 
                     buffer = new byte[len];
                     pos = 0;
+                } else if (pos == 1000) {
+                    // This really shouldn't happen, handshake lines are short, but just to be safe...
+                    String line = new String(buffer, "UTF-8");
+                    throw new WebSocketException("Unexpected long line in handshake: " + line);
                 }
             }
 
