@@ -51,6 +51,27 @@ class MessageBuilderFactory {
     }
 
     static class TextBuilder implements Builder {
+        private static ThreadLocal<CharsetDecoder> localDecoder = new ThreadLocal<CharsetDecoder>() {
+            @Override
+            protected CharsetDecoder initialValue() {
+                Charset utf8 = Charset.forName("UTF8");
+                CharsetDecoder decoder = utf8.newDecoder();
+                decoder.onMalformedInput(CodingErrorAction.REPORT);
+                decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
+                return decoder;
+            }
+        };
+        private static ThreadLocal<CharsetEncoder> localEncoder = new ThreadLocal<CharsetEncoder>() {
+            @Override
+            protected CharsetEncoder initialValue() {
+                Charset utf8 = Charset.forName("UTF8");
+                CharsetEncoder encoder = utf8.newEncoder();
+                encoder.onMalformedInput(CodingErrorAction.REPORT);
+                encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
+                return encoder;
+            }
+        };
+
         private StringBuilder builder;
         private ByteBuffer carryOver;
 
@@ -85,7 +106,7 @@ class MessageBuilderFactory {
         private String decodeString(byte[] bytes) {
             try {
                 ByteBuffer input = ByteBuffer.wrap(bytes);
-                CharBuffer buf = decoder.decode(input);
+                CharBuffer buf = localDecoder.get().decode(input);
                 String text = buf.toString();
                 return text;
             } catch (CharacterCodingException e) {
@@ -103,10 +124,10 @@ class MessageBuilderFactory {
         private String decodeStringStreaming(byte[] bytes) {
             try {
                 ByteBuffer input = getBuffer(bytes);
-                int bufSize = (int)(input.remaining() * decoder.averageCharsPerByte());
+                int bufSize = (int)(input.remaining() * localDecoder.get().averageCharsPerByte());
                 CharBuffer output = CharBuffer.allocate(bufSize);
                 for (;;) {
-                    CoderResult result = decoder.decode(input, output, false);
+                    CoderResult result = localDecoder.get().decode(input, output, false);
                     if (result.isError()) {
                         return null;
                     }
@@ -127,7 +148,7 @@ class MessageBuilderFactory {
                 }
                 // Re-encode to work around bugs in UTF-8 decoder
                 CharBuffer test = CharBuffer.wrap(output);
-                encoder.encode(test);
+                localEncoder.get().encode(test);
                 output.flip();
                 String text = output.toString();
                 return text;
@@ -148,18 +169,6 @@ class MessageBuilderFactory {
                 return ByteBuffer.wrap(bytes);
             }
         }
-    }
-
-    private static CharsetDecoder decoder;
-    private static CharsetEncoder encoder;
-    static {
-        Charset utf8 = Charset.forName("UTF8");
-        decoder = utf8.newDecoder();
-        decoder.onMalformedInput(CodingErrorAction.REPORT);
-        decoder.onUnmappableCharacter(CodingErrorAction.REPORT);
-        encoder = utf8.newEncoder();
-        encoder.onMalformedInput(CodingErrorAction.REPORT);
-        encoder.onUnmappableCharacter(CodingErrorAction.REPORT);
     }
 
     static Builder builder(byte opcode) {

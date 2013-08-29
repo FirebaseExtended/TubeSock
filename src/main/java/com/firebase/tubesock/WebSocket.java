@@ -17,6 +17,7 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * This is the main class used to create a websocket connection. Create a new instance, set an event handler, and then
@@ -25,6 +26,7 @@ import java.util.Map;
  */
 public class WebSocket extends Thread {
     private static final String THREAD_BASE_NAME = "TubeSock";
+    private static final AtomicInteger clientCount = new AtomicInteger(0);
 
     static final byte OPCODE_NONE = 0x0;
     static final byte OPCODE_TEXT = 0x1;
@@ -41,6 +43,7 @@ public class WebSocket extends Thread {
     private WebSocketReceiver receiver = null;
     private WebSocketWriter writer = null;
     private WebSocketHandshake handshake = null;
+    private int clientId = clientCount.incrementAndGet();
 
     /**
      * Create a websocket to connect to a given server
@@ -92,7 +95,7 @@ public class WebSocket extends Thread {
         if (connected) {
             throw new WebSocketException("already connected");
         }
-        setName(THREAD_BASE_NAME + "Reader");
+        setName(THREAD_BASE_NAME + "Reader-" + clientId);
         start();
     }
 
@@ -144,7 +147,7 @@ public class WebSocket extends Thread {
             handshake.verifyServerHandshakeHeaders(headers);
 
             connected = true;
-            writer = new WebSocketWriter(output, this, THREAD_BASE_NAME);
+            writer = new WebSocketWriter(output, this, THREAD_BASE_NAME, clientId);
             writer.start();
             receiver = new WebSocketReceiver(input, this);
             eventHandler.onOpen();

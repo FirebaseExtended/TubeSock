@@ -28,8 +28,8 @@ class WebSocketWriter extends Thread {
     private WebSocket websocket;
     private WritableByteChannel channel;
 
-    WebSocketWriter(OutputStream output, WebSocket websocket, String threadBaseName) {
-        setName(threadBaseName + "Writer");
+    WebSocketWriter(OutputStream output, WebSocket websocket, String threadBaseName, int clientId) {
+        setName(threadBaseName + "Writer-" + clientId);
         this.websocket = websocket;
         channel = Channels.newChannel(output);
         pendingBuffers = new LinkedBlockingQueue<ByteBuffer>();
