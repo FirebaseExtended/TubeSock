@@ -1,10 +1,7 @@
 package com.firebase.tubesock;
 
-import org.apache.commons.codec.binary.Base64;
-
 import java.net.URI;
 import java.util.HashMap;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -79,7 +76,7 @@ class WebSocketHandshake {
         for (int i = 0; i < 16; i++) {
             nonce[i] = (byte) rand(0, 255);
         }
-        return Base64.encodeBase64String(nonce);
+        return Base64.encodeToString(nonce, false);
     }
 
     public void verifyServerStatusLine(String statusLine) {
