@@ -183,14 +183,15 @@ public class WebSocket extends Thread {
 
     private void send(byte opcode, byte[] data) {
         if (!connected) {
-            throw new WebSocketException("error while sending data: not connected");
-        }
-
-        try {
-            writer.send(opcode, true, data);
-        } catch (IOException e) {
-            eventHandler.onError(new WebSocketException("Failed to send frame", e));
-            close();
+            // We might have been disconnected on another thread, just report an error
+            eventHandler.onError(new WebSocketException("error while sending data: not connected"));
+        } else {
+            try {
+                writer.send(opcode, true, data);
+            } catch (IOException e) {
+                eventHandler.onError(new WebSocketException("Failed to send frame", e));
+                close();
+            }
         }
     }
 
