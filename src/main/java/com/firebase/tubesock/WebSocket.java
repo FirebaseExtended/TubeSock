@@ -199,8 +199,6 @@ public class WebSocket extends Thread {
         eventHandler.onError(e);
         if (connected) {
             close();
-        } else {
-            System.err.println("close called on closed connection");
         }
     }
 
