@@ -28,6 +28,9 @@ public class WebSocket extends Thread {
     private static final String THREAD_BASE_NAME = "TubeSock";
     private static final AtomicInteger clientCount = new AtomicInteger(0);
 
+    private enum State {NONE, CONNECTING, CONNECTED, DISCONNECTED};
+
+
     static final byte OPCODE_NONE = 0x0;
     static final byte OPCODE_TEXT = 0x1;
     static final byte OPCODE_BINARY = 0x2;
@@ -38,7 +41,7 @@ public class WebSocket extends Thread {
     private URI url = null;
     private WebSocketEventHandler eventHandler = null;
 
-    private volatile boolean connected = false;
+    private volatile State state = State.NONE;
 
     private WebSocketReceiver receiver = null;
     private WebSocketWriter writer = null;
@@ -73,6 +76,8 @@ public class WebSocket extends Thread {
     public WebSocket(URI url, String protocol, Map<String, String> extraHeaders) {
         this.url = url;
         handshake = new WebSocketHandshake(url, protocol, extraHeaders);
+        receiver = new WebSocketReceiver(this);
+        writer = new WebSocketWriter(this, THREAD_BASE_NAME, clientId);
     }
 
     /**
@@ -92,10 +97,11 @@ public class WebSocket extends Thread {
      * onOpen handler once the connection is established.
      */
     public void connect() {
-        if (connected) {
+        if (state != State.NONE) {
             throw new WebSocketException("already connected");
         }
         setName(THREAD_BASE_NAME + "Reader-" + clientId);
+        state = State.CONNECTING;
         start();
     }
 
@@ -146,10 +152,10 @@ public class WebSocket extends Thread {
             }
             handshake.verifyServerHandshakeHeaders(headers);
 
-            connected = true;
-            writer = new WebSocketWriter(output, this, THREAD_BASE_NAME, clientId);
+            writer.setOutput(output);
+            receiver.setInput(input);
+            state = State.CONNECTED;
             writer.start();
-            receiver = new WebSocketReceiver(input, this);
             eventHandler.onOpen();
             receiver.run();
         } catch (WebSocketException wse) {
@@ -182,7 +188,7 @@ public class WebSocket extends Thread {
     }
 
     private void send(byte opcode, byte[] data) {
-        if (!connected) {
+        if (state != State.CONNECTED) {
             // We might have been disconnected on another thread, just report an error
             eventHandler.onError(new WebSocketException("error while sending data: not connected"));
         } else {
@@ -197,7 +203,7 @@ public class WebSocket extends Thread {
 
     void handleReceiverError(WebSocketException e) {
         eventHandler.onError(e);
-        if (connected) {
+        if (state == State.CONNECTED) {
             close();
         }
     }
@@ -207,12 +213,25 @@ public class WebSocket extends Thread {
      */
     public synchronized void close()
     {
-        if (!connected) {
-            return;
+        switch (state) {
+            case NONE:
+                state = State.DISCONNECTED;
+                break;
+            case CONNECTING:
+                break;
+            case CONNECTED:
+                // This method also shuts down the writer
+                sendCloseHandshake();
+                break;
+            case DISCONNECTED:
+                break;  // No-op
         }
+        receiver.stopit();
+        writer.stopIt();
+        state = State.DISCONNECTED;
 
-        // This method also shuts down the writer
-        sendCloseHandshake();
+
+
 
         if (receiver.isRunning()) {
             receiver.stopit();
@@ -230,8 +249,6 @@ public class WebSocket extends Thread {
         } catch (IOException e) {
             eventHandler.onError(new WebSocketException("Failed to send close frame", e));
         }
-
-        connected = false;
     }
 
     private Socket createSocket() {
@@ -286,7 +303,9 @@ public class WebSocket extends Thread {
      * @throws InterruptedException
      */
     public void blockClose() throws InterruptedException {
-        writer.join();
+        if (writer != null) {
+            writer.join();
+        }
         this.join();
     }
 }

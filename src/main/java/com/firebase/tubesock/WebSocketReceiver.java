@@ -17,13 +17,16 @@ class WebSocketReceiver {
     private volatile boolean stop = false;
 
 
-    WebSocketReceiver(DataInputStream input, WebSocket websocket) {
-        this.input = input;
+    WebSocketReceiver(WebSocket websocket) {
         this.websocket = websocket;
-        this.eventHandler = websocket.getEventHandler();
+    }
+
+    void setInput(DataInputStream input) {
+        this.input = input;
     }
 
     void run() {
+        this.eventHandler = websocket.getEventHandler();
         while (!stop) {
             try {
                 int offset = 0;
