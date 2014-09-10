@@ -57,7 +57,7 @@ class WebSocketReceiver {
                     byte[] payload = new byte[(int)payload_length];
                     read(payload, 0, (int)payload_length);
                     if (opcode == WebSocket.OPCODE_CLOSE) {
-                        websocket.close();
+                        websocket.onCloseOpReceived();
                     } else if (opcode == WebSocket.OPCODE_PONG) {
                         // NOTE: as a client, we don't expect PONGs. No-op
                     } else if (opcode == WebSocket.OPCODE_TEXT ||

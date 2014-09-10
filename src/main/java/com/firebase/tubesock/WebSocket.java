@@ -28,7 +28,7 @@ public class WebSocket extends Thread {
     private static final String THREAD_BASE_NAME = "TubeSock";
     private static final AtomicInteger clientCount = new AtomicInteger(0);
 
-    private enum State {NONE, CONNECTING, CONNECTED, DISCONNECTED};
+    private enum State {NONE, CONNECTING, CONNECTED, DISCONNECTING, DISCONNECTED};
 
 
     static final byte OPCODE_NONE = 0x0;
@@ -45,6 +45,7 @@ public class WebSocket extends Thread {
 
     private WebSocketReceiver receiver = null;
     private WebSocketWriter writer = null;
+    private Socket socket = null;
     private WebSocketHandshake handshake = null;
     private int clientId = clientCount.incrementAndGet();
 
@@ -108,7 +109,7 @@ public class WebSocket extends Thread {
     @Override
     public void run() {
         try {
-            Socket socket = createSocket();
+            socket = createSocket();
             DataInputStream input = new DataInputStream(socket.getInputStream());
             OutputStream output = socket.getOutputStream();
 
@@ -216,32 +217,46 @@ public class WebSocket extends Thread {
         switch (state) {
             case NONE:
                 state = State.DISCONNECTED;
-                break;
+                return;
             case CONNECTING:
-                break;
+                // don't wait for an established connection, just close the tcp socket
+                closeSocket();
+                return;
             case CONNECTED:
                 // This method also shuts down the writer
+                // the socket will be closed once the ack for the close was received
                 sendCloseHandshake();
-                break;
+                return;
+            case DISCONNECTING:
+                return; // no-op;
             case DISCONNECTED:
-                break;  // No-op
+                return;  // No-op
+        }
+    }
+
+    void onCloseOpReceived() {
+        closeSocket();
+    }
+
+    private void closeSocket() {
+        if (state == State.DISCONNECTED) {
+            return;
         }
         receiver.stopit();
         writer.stopIt();
-        state = State.DISCONNECTED;
-
-
-
-
-        if (receiver.isRunning()) {
-            receiver.stopit();
+        try {
+            socket.close();
+        } catch(IOException e) {
+            throw new RuntimeException(e);
         }
+        state = State.DISCONNECTED;
 
         eventHandler.onClose();
     }
 
     private void sendCloseHandshake() {
         try {
+            state = State.DISCONNECTING;
             // Set the stop flag then queue up a message. This ensures that the writer thread
             // will wake up, and since we set the stop flag, it will exit its run loop.
             writer.stopIt();
