@@ -97,19 +97,24 @@ public class WebSocket extends Thread {
      * Start up the socket. This is non-blocking, it will fire up the threads used by the library and then trigger the
      * onOpen handler once the connection is established.
      */
-    public void connect() {
-        if (state != State.NONE) {
-            throw new WebSocketException("already connected");
+    public synchronized void connect() {
+        try {
+            if (state != State.NONE) {
+                throw new WebSocketException("already connected");
+            }
+            setName(THREAD_BASE_NAME + "Reader-" + clientId);
+            socket = createSocket();
+            state = State.CONNECTING;
+            start();
+        } catch (WebSocketException wse) {
+            eventHandler.onError(wse);
+            close();
         }
-        setName(THREAD_BASE_NAME + "Reader-" + clientId);
-        state = State.CONNECTING;
-        start();
     }
 
     @Override
     public void run() {
         try {
-            socket = createSocket();
             DataInputStream input = new DataInputStream(socket.getInputStream());
             OutputStream output = socket.getOutputStream();
 
@@ -172,7 +177,7 @@ public class WebSocket extends Thread {
      * Send a TEXT message over the socket
      * @param data The text payload to be sent
      */
-    public void send(String data) {
+    public synchronized void send(String data) {
         send(OPCODE_TEXT, data.getBytes());
     }
 
@@ -180,15 +185,15 @@ public class WebSocket extends Thread {
      * Send a BINARY message over the socket
      * @param data The binary payload to be sent
      */
-    public void send(byte[] data) {
+    public synchronized void send(byte[] data) {
         send(OPCODE_BINARY, data);
     }
 
-    void pong(byte[] data) {
+    synchronized void pong(byte[] data) {
         send(OPCODE_PONG, data);
     }
 
-    private void send(byte opcode, byte[] data) {
+    private synchronized void send(byte opcode, byte[] data) {
         if (state != State.CONNECTED) {
             // We might have been disconnected on another thread, just report an error
             eventHandler.onError(new WebSocketException("error while sending data: not connected"));
