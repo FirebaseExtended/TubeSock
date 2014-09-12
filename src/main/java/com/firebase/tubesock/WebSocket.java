@@ -193,7 +193,7 @@ public class WebSocket extends Thread {
         send(OPCODE_PONG, data);
     }
 
-    private void send(byte opcode, byte[] data) {
+    private synchronized void send(byte opcode, byte[] data) {
         if (state != State.CONNECTED) {
             // We might have been disconnected on another thread, just report an error
             eventHandler.onError(new WebSocketException("error while sending data: not connected"));
