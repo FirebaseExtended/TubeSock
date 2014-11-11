@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.URI;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class WebSocket extends Thread {
 
     private enum State {NONE, CONNECTING, CONNECTED, DISCONNECTING, DISCONNECTED};
 
+    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     static final byte OPCODE_NONE = 0x0;
     static final byte OPCODE_TEXT = 0x1;
@@ -132,7 +134,7 @@ public class WebSocket extends Thread {
                 pos += 1;
 
                 if (buffer[pos - 1] == 0x0A && buffer[pos - 2] == 0x0D) {
-                    String line = new String(buffer, "UTF-8");
+                    String line = new String(buffer, UTF8);
                     if (line.trim().equals("")) {
                         handshakeComplete = true;
                     } else {
@@ -143,7 +145,7 @@ public class WebSocket extends Thread {
                     pos = 0;
                 } else if (pos == 1000) {
                     // This really shouldn't happen, handshake lines are short, but just to be safe...
-                    String line = new String(buffer, "UTF-8");
+                    String line = new String(buffer, UTF8);
                     throw new WebSocketException("Unexpected long line in handshake: " + line);
                 }
             }
@@ -178,7 +180,7 @@ public class WebSocket extends Thread {
      * @param data The text payload to be sent
      */
     public synchronized void send(String data) {
-        send(OPCODE_TEXT, data.getBytes());
+        send(OPCODE_TEXT, data.getBytes(UTF8));
     }
 
     /**
