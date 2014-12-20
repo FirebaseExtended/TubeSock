@@ -1,5 +1,6 @@
 package com.firebase.tubesock;
 
+import java.util.Locale;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -92,9 +93,9 @@ class WebSocketHandshake {
     }
 
     public void verifyServerHandshakeHeaders(HashMap<String, String> headers) {
-        if (!headers.get("Upgrade").toLowerCase().equals("websocket")) {
+        if (!headers.get("Upgrade").toLowerCase(Locale.US).equals("websocket")) {
             throw new WebSocketException("connection failed: missing header field in server handshake: Upgrade");
-        } else if (!headers.get("Connection").toLowerCase().equals("upgrade")) {
+        } else if (!headers.get("Connection").toLowerCase(Locale.US).equals("upgrade")) {
             throw new WebSocketException("connection failed: missing header field in server handshake: Connection");
         }
     }
