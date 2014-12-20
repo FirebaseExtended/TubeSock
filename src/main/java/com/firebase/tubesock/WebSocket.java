@@ -134,7 +134,7 @@ public class WebSocket extends Thread {
                 pos += 1;
 
                 if (buffer[pos - 1] == 0x0A && buffer[pos - 2] == 0x0D) {
-                    String line = new String(buffer, UTF8);
+                    String line = new String(buffer, UTF8.name());
                     if (line.trim().equals("")) {
                         handshakeComplete = true;
                     } else {
@@ -145,7 +145,7 @@ public class WebSocket extends Thread {
                     pos = 0;
                 } else if (pos == 1000) {
                     // This really shouldn't happen, handshake lines are short, but just to be safe...
-                    String line = new String(buffer, UTF8);
+                    String line = new String(buffer, UTF8.name());
                     throw new WebSocketException("Unexpected long line in handshake: " + line);
                 }
             }
