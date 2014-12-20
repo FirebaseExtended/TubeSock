@@ -178,9 +178,10 @@ public class WebSocket extends Thread {
     /**
      * Send a TEXT message over the socket
      * @param data The text payload to be sent
+     * @throws UnsupportedEncodingException cannot really be thrown in practice
      */
-    public synchronized void send(String data) {
-        send(OPCODE_TEXT, data.getBytes(UTF8));
+    public synchronized void send(String data) throws UnsupportedEncodingException {
+        send(OPCODE_TEXT, data.getBytes(UTF8.name()));
     }
 
     /**
