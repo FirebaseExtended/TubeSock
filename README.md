@@ -80,7 +80,7 @@ Architecture
 TubeSock uses two threads, one for reading and one for writing. The underlying socket is a blocking socket, or, if
 using wss, a blocking SSLSocket. Using an SSLSocket is preferred over a non-blocking socket with SSLEngine due to bugs
  in some Android implementations of SSLEngine. TubeSock can make SSL-enabled connections from both a standard
- JVM as well as Android, tested on version 2.2 and forward.
+ JVM as well as Android, tested on version 2.3 and forward.
 
 When events occur, the specified handler will be called with details of the event. The onMessage method will always be
 called from the reader thread. The onError and onClose methods can be called from either the writer or the reader. As
