@@ -40,16 +40,17 @@ public class WebSocket extends Thread {
     static final byte OPCODE_PING = 0x9;
     static final byte OPCODE_PONG = 0xA;
 
-    private URI url = null;
+    private volatile State state = State.NONE;
+    private volatile Socket socket = null;
+
     private WebSocketEventHandler eventHandler = null;
 
-    private volatile State state = State.NONE;
+    private final URI url;
 
-    private WebSocketReceiver receiver = null;
-    private WebSocketWriter writer = null;
-    private Socket socket = null;
-    private WebSocketHandshake handshake = null;
-    private int clientId = clientCount.incrementAndGet();
+    private final WebSocketReceiver receiver;
+    private final WebSocketWriter writer;
+    private final WebSocketHandshake handshake;
+    private final int clientId = clientCount.incrementAndGet();
 
     /**
      * Create a websocket to connect to a given server
@@ -100,23 +101,34 @@ public class WebSocket extends Thread {
      * onOpen handler once the connection is established.
      */
     public synchronized void connect() {
-        try {
-            if (state != State.NONE) {
-                throw new WebSocketException("already connected");
-            }
-            setName(THREAD_BASE_NAME + "Reader-" + clientId);
-            socket = createSocket();
-            state = State.CONNECTING;
-            start();
-        } catch (WebSocketException wse) {
-            eventHandler.onError(wse);
+        if (state != State.NONE) {
+            eventHandler.onError(new WebSocketException("connect() already called"));
             close();
+            return;
         }
+        setName(THREAD_BASE_NAME + "Reader-" + clientId);
+        state = State.CONNECTING;
+        start();
     }
 
     @Override
     public void run() {
         try {
+            Socket socket = createSocket();
+            synchronized (this) {
+                this.socket = socket;
+                if (this.state == State.DISCONNECTED) {
+                    // The connection has been closed while creating the socket, close it immediately and return
+                    try {
+                        this.socket.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    this.socket = null;
+                    return;
+                }
+            }
+
             DataInputStream input = new DataInputStream(socket.getInputStream());
             OutputStream output = socket.getOutputStream();
 
@@ -130,6 +142,9 @@ public class WebSocket extends Thread {
 
             while (!handshakeComplete) {
                 int b = input.read();
+                if (b == -1) {
+                    throw new WebSocketException("Connection closed before handshake was complete");
+                }
                 buffer[pos] = (byte) b;
                 pos += 1;
 
@@ -245,16 +260,18 @@ public class WebSocket extends Thread {
         closeSocket();
     }
 
-    private void closeSocket() {
+    private synchronized void closeSocket() {
         if (state == State.DISCONNECTED) {
             return;
         }
         receiver.stopit();
         writer.stopIt();
-        try {
-            socket.close();
-        } catch(IOException e) {
-            throw new RuntimeException(e);
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         state = State.DISCONNECTED;
 
@@ -325,7 +342,8 @@ public class WebSocket extends Thread {
      * @throws InterruptedException
      */
     public void blockClose() throws InterruptedException {
-        if (writer != null) {
+        // If the thread is new, it will never run, since we closed the connection before we actually connected
+        if (writer.getState() != Thread.State.NEW) {
             writer.join();
         }
         this.join();
