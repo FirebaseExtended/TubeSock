@@ -19,7 +19,7 @@ import java.util.concurrent.LinkedBlockingQueue;
  * This class handles blocking write operations to the websocket. Given an opcode and some bytes, it frames a message
  * and sends it over the wire. The actual sending happens in a separate thread.
  */
-class WebSocketWriter extends Thread {
+class WebSocketWriter  {
 
     private BlockingQueue<ByteBuffer> pendingBuffers;
     private final Random random = new Random();
@@ -27,9 +27,17 @@ class WebSocketWriter extends Thread {
     private boolean closeSent = false;
     private WebSocket websocket;
     private WritableByteChannel channel;
+    private final Thread innerThread;
 
     WebSocketWriter(WebSocket websocket, String threadBaseName, int clientId) {
-        setName(threadBaseName + "Writer-" + clientId);
+        innerThread = WebSocket.getThreadFactory().newThread(new Runnable() {
+            @Override
+            public void run() {
+                runWriter();
+            }
+        });
+
+        WebSocket.getIntializer().setName(getInnerThread(), threadBaseName + "Writer-" + clientId);
         this.websocket = websocket;
         pendingBuffers = new LinkedBlockingQueue<ByteBuffer>();
     }
@@ -114,24 +122,6 @@ class WebSocketWriter extends Thread {
         pendingBuffers.add(frame);
     }
 
-    @Override
-    public void run() {
-        try {
-            while (!stop && !Thread.interrupted()) {
-                writeMessage();
-            }
-            // We're stopping, clear any remaining messages
-            for (int i = 0; i < pendingBuffers.size(); ++i) {
-                writeMessage();
-            }
-        } catch ( IOException e ) {
-            handleError(new WebSocketException("IO Exception", e));
-        } catch ( InterruptedException e ) {
-            // this thread is regularly terminated via an interrupt
-            //e.printStackTrace();
-        }
-    }
-
     private void writeMessage() throws InterruptedException, IOException {
         ByteBuffer msg = pendingBuffers.take();
         channel.write(msg);
@@ -143,5 +133,26 @@ class WebSocketWriter extends Thread {
 
     private void handleError(WebSocketException e) {
         websocket.handleReceiverError(e);
+    }
+
+    private void runWriter() {
+        try {
+            while (!stop && !Thread.interrupted()) {
+                writeMessage();
+            }
+            // We're stopping, clear any remaining messages
+            for (int i = 0; i < pendingBuffers.size(); ++i) {
+                writeMessage();
+            }
+        } catch (IOException e) {
+            handleError(new WebSocketException("IO Exception", e));
+        } catch (InterruptedException e) {
+            // this thread is regularly terminated via an interrupt
+            //e.printStackTrace();
+        }
+    }
+
+    Thread getInnerThread() {
+        return innerThread;
     }
 }
