@@ -229,6 +229,7 @@ public class WebSocket extends Thread {
         if (state == State.CONNECTED) {
             close();
         }
+        closeSocket();
     }
 
     /**
