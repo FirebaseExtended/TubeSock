@@ -3,9 +3,7 @@ package com.firebase.tubesock;
 import org.apache.http.conn.ssl.StrictHostnameVerifier;
 
 import javax.net.SocketFactory;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLSocket;
-import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.*;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -13,6 +11,8 @@ import java.net.Socket;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -50,6 +50,7 @@ public class WebSocket extends Thread {
     private final WebSocketReceiver receiver;
     private final WebSocketWriter writer;
     private final WebSocketHandshake handshake;
+    private final TrustManager customTrustManager;
     private final int clientId = clientCount.incrementAndGet();
 
     /**
@@ -78,10 +79,15 @@ public class WebSocket extends Thread {
      *                     are requested
      */
     public WebSocket(URI url, String protocol, Map<String, String> extraHeaders) {
+        this(url, protocol, extraHeaders, null);
+    }
+
+    public WebSocket(URI url, String protocol, Map<String, String> extraHeaders, TrustManager tm) {
         this.url = url;
         handshake = new WebSocketHandshake(url, protocol, extraHeaders);
         receiver = new WebSocketReceiver(this);
         writer = new WebSocketWriter(this, THREAD_BASE_NAME, clientId);
+        customTrustManager = tm;
     }
 
     /**
@@ -314,14 +320,24 @@ public class WebSocket extends Thread {
                 port = 443;
             }
             try {
-                SocketFactory factory = SSLSocketFactory.getDefault();
+                SocketFactory factory;
+                if (customTrustManager != null) {
+                    SSLContext ctx = SSLContext.getInstance("TLS");
+                    ctx.init(null, new TrustManager[] {customTrustManager}, null);
+                    factory = ctx.getSocketFactory();
+                } else {
+                    factory = SSLSocketFactory.getDefault();
+                }
                 socket = factory.createSocket(host, port);
-                // Make sure the cert we got is for the hostname we're expecting
                 verifyHost((SSLSocket)socket, host);
             } catch (UnknownHostException uhe) {
                 throw new WebSocketException("unknown host: " + host, uhe);
             } catch (IOException ioe) {
                 throw new WebSocketException("error while creating secure socket to " + url, ioe);
+            } catch (NoSuchAlgorithmException e) {
+                throw new WebSocketException("Error initiating SSL Connection", e);
+            } catch (KeyManagementException e) {
+                throw new WebSocketException("Error initiating SSL Connection", e);
             }
         } else {
             throw new WebSocketException("unsupported protocol: " + scheme);
