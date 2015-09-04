@@ -2,6 +2,7 @@ package com.firebase.tubesock;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 
 /**
  * This class encapsulates the receiving and decoding of websocket frames. It is run from the thread started by the
@@ -71,6 +72,8 @@ class WebSocketReceiver {
                         throw new WebSocketException("Unsupported opcode: " + opcode);
                     }
                 }
+            } catch (SocketTimeoutException sto) {
+                continue;
             } catch (IOException ioe) {
                 handleError(new WebSocketException("IO Error", ioe));
             } catch (WebSocketException e) {

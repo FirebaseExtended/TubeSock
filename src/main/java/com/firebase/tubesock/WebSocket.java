@@ -18,6 +18,8 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * call connect(). Once the event handler's onOpen method has been called, call send() on the websocket to transmit
  * data.
  */
-public class WebSocket extends Thread {
+public class WebSocket {
     private static final String THREAD_BASE_NAME = "TubeSock";
     private static final AtomicInteger clientCount = new AtomicInteger(0);
 
@@ -51,6 +53,28 @@ public class WebSocket extends Thread {
     private final WebSocketWriter writer;
     private final WebSocketHandshake handshake;
     private final int clientId = clientCount.incrementAndGet();
+
+    private final Thread innerThread;
+    private static ThreadFactory threadFactory = Executors.defaultThreadFactory();
+    private static ThreadInitializer intializer = new ThreadInitializer() {
+        @Override
+        public void setName(Thread t, String name) {
+            t.setName(name);
+        }
+    };
+
+    static ThreadFactory getThreadFactory() {
+        return threadFactory;
+    }
+
+    static ThreadInitializer getIntializer() {
+        return intializer;
+    }
+
+    public static void setThreadFactory(ThreadFactory threadFactory, ThreadInitializer intializer) {
+        WebSocket.threadFactory = threadFactory;
+        WebSocket.intializer = intializer;
+    }
 
     /**
      * Create a websocket to connect to a given server
@@ -78,6 +102,12 @@ public class WebSocket extends Thread {
      *                     are requested
      */
     public WebSocket(URI url, String protocol, Map<String, String> extraHeaders) {
+        innerThread = getThreadFactory().newThread(new Runnable() {
+            @Override
+            public void run() {
+                runReader();
+            }
+        });
         this.url = url;
         handshake = new WebSocketHandshake(url, protocol, extraHeaders);
         receiver = new WebSocketReceiver(this);
@@ -106,88 +136,9 @@ public class WebSocket extends Thread {
             close();
             return;
         }
-        setName(THREAD_BASE_NAME + "Reader-" + clientId);
+        getIntializer().setName(getInnerThread(), THREAD_BASE_NAME + "Reader-" + clientId);
         state = State.CONNECTING;
-        start();
-    }
-
-    @Override
-    public void run() {
-        try {
-            Socket socket = createSocket();
-            synchronized (this) {
-                this.socket = socket;
-                if (this.state == State.DISCONNECTED) {
-                    // The connection has been closed while creating the socket, close it immediately and return
-                    try {
-                        this.socket.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    this.socket = null;
-                    return;
-                }
-            }
-
-            DataInputStream input = new DataInputStream(socket.getInputStream());
-            OutputStream output = socket.getOutputStream();
-
-            output.write(handshake.getHandshake());
-
-            boolean handshakeComplete = false;
-            int len = 1000;
-            byte[] buffer = new byte[len];
-            int pos = 0;
-            ArrayList<String> handshakeLines = new ArrayList<String>();
-
-            while (!handshakeComplete) {
-                int b = input.read();
-                if (b == -1) {
-                    throw new WebSocketException("Connection closed before handshake was complete");
-                }
-                buffer[pos] = (byte) b;
-                pos += 1;
-
-                if (buffer[pos - 1] == 0x0A && buffer[pos - 2] == 0x0D) {
-                    String line = new String(buffer, UTF8);
-                    if (line.trim().equals("")) {
-                        handshakeComplete = true;
-                    } else {
-                        handshakeLines.add(line.trim());
-                    }
-
-                    buffer = new byte[len];
-                    pos = 0;
-                } else if (pos == 1000) {
-                    // This really shouldn't happen, handshake lines are short, but just to be safe...
-                    String line = new String(buffer, UTF8);
-                    throw new WebSocketException("Unexpected long line in handshake: " + line);
-                }
-            }
-
-            handshake.verifyServerStatusLine(handshakeLines.get(0));
-            handshakeLines.remove(0);
-
-            HashMap<String, String> headers = new HashMap<String, String>();
-            for (String line : handshakeLines) {
-                String[] keyValue = line.split(": ", 2);
-                headers.put(keyValue[0], keyValue[1]);
-            }
-            handshake.verifyServerHandshakeHeaders(headers);
-
-            writer.setOutput(output);
-            receiver.setInput(input);
-            state = State.CONNECTED;
-            writer.start();
-            eventHandler.onOpen();
-            receiver.run();
-        } catch (WebSocketException wse) {
-            eventHandler.onError(wse);
-        } catch (IOException ioe) {
-            eventHandler.onError(new WebSocketException("error while connecting: " + ioe.getMessage(), ioe));
-        } finally {
-            close();
-        }
+        getInnerThread().start();
     }
 
     /**
@@ -344,9 +295,93 @@ public class WebSocket extends Thread {
      */
     public void blockClose() throws InterruptedException {
         // If the thread is new, it will never run, since we closed the connection before we actually connected
-        if (writer.getState() != Thread.State.NEW) {
-            writer.join();
+        if (writer.getInnerThread().getState() != Thread.State.NEW) {
+            writer.getInnerThread().join();
         }
-        this.join();
+        getInnerThread().join();
+    }
+
+    private void runReader() {
+        try {
+            Socket socket = createSocket();
+            synchronized (this) {
+                WebSocket.this.socket = socket;
+                if (WebSocket.this.state == WebSocket.State.DISCONNECTED) {
+                    // The connection has been closed while creating the socket, close it immediately and return
+                    try {
+                        WebSocket.this.socket.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    WebSocket.this.socket = null;
+                    return;
+                }
+            }
+
+            DataInputStream input = new DataInputStream(socket.getInputStream());
+            OutputStream output = socket.getOutputStream();
+
+            output.write(handshake.getHandshake());
+
+            boolean handshakeComplete = false;
+            int len = 1000;
+            byte[] buffer = new byte[len];
+            int pos = 0;
+            ArrayList<String> handshakeLines = new ArrayList<String>();
+
+            while (!handshakeComplete) {
+                int b = input.read();
+                if (b == -1) {
+                    throw new WebSocketException("Connection closed before handshake was complete");
+                }
+                buffer[pos] = (byte) b;
+                pos += 1;
+
+                if (buffer[pos - 1] == 0x0A && buffer[pos - 2] == 0x0D) {
+                    String line = new String(buffer, UTF8);
+                    if (line.trim().equals("")) {
+                        handshakeComplete = true;
+                    } else {
+                        handshakeLines.add(line.trim());
+                    }
+
+                    buffer = new byte[len];
+                    pos = 0;
+                } else if (pos == 1000) {
+                    // This really shouldn't happen, handshake lines are short, but just to be safe...
+                    String line = new String(buffer, UTF8);
+                    throw new WebSocketException("Unexpected long line in handshake: " + line);
+                }
+            }
+
+            handshake.verifyServerStatusLine(handshakeLines.get(0));
+            handshakeLines.remove(0);
+
+            HashMap<String, String> headers = new HashMap<String, String>();
+            for (String line : handshakeLines) {
+                String[] keyValue = line.split(": ", 2);
+                headers.put(keyValue[0], keyValue[1]);
+            }
+            handshake.verifyServerHandshakeHeaders(headers);
+
+            writer.setOutput(output);
+            receiver.setInput(input);
+            state = WebSocket.State.CONNECTED;
+            writer.getInnerThread().start();
+            eventHandler.onOpen();
+            receiver.run();
+        } catch (WebSocketException wse) {
+            eventHandler.onError(wse);
+        } catch (IOException ioe) {
+            eventHandler
+                .onError(new WebSocketException("error while connecting: " + ioe.getMessage(), ioe));
+        } finally {
+            close();
+        }
+
+    }
+
+    Thread getInnerThread() {
+        return innerThread;
     }
 }
