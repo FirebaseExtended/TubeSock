@@ -1,7 +1,6 @@
 package com.firebase.tubesock;
 
 import org.apache.http.conn.ssl.StrictHostnameVerifier;
-
 import javax.net.SocketFactory;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSocket;
@@ -17,6 +16,7 @@ import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -360,7 +360,7 @@ public class WebSocket {
             HashMap<String, String> headers = new HashMap<String, String>();
             for (String line : handshakeLines) {
                 String[] keyValue = line.split(": ", 2);
-                headers.put(keyValue[0], keyValue[1]);
+                headers.put(keyValue[0].toLowerCase(Locale.US), keyValue[1]);
             }
             handshake.verifyServerHandshakeHeaders(headers);
 
